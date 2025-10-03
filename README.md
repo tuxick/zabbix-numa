@@ -1,2 +1,2 @@
 # zabbix-numa
-Monitor numa hits and misses using '''numastat'''
+Monitor numa hits and misses using **numastat**
