@@ -1,0 +1,267 @@
+zabbix_export:
+  version: '5.2'
+  date: '2025-10-03T10:42:27Z'
+  groups:
+    -
+      name: 0_Linux_servers
+    -
+      name: 'Templates/Server hardware'
+  templates:
+    -
+      template: 'Template Numa'
+      name: 'Template Numa'
+      description: 'UserParameter=numa.getdata[*],/usr/bin/numastat'
+      groups:
+        -
+          name: 0_Linux_servers
+        -
+          name: 'Templates/Server hardware'
+      applications:
+        -
+          name: Numa
+      items:
+        -
+          name: 'Get numastat'
+          key: numa.getdata
+          delay: 5m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          applications:
+            -
+              name: Numa
+      discovery_rules:
+        -
+          name: 'Numa node discovery'
+          type: DEPENDENT
+          key: numa.discovery
+          delay: '0'
+          item_prototypes:
+            -
+              name: 'Get numa_hit node{#NUMANODE} per second'
+              type: DEPENDENT
+              key: 'numa.hit.ps[{#NUMANODE}]'
+              delay: '0'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: REGEX
+                  parameters:
+                    - 'numa_hit.*'
+                    - \0
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return value.replace(/\s\s*/g,"\n")'
+                -
+                  type: CSV_TO_JSON
+                  parameters:
+                    - ''
+                    - ''
+                    - '1'
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[{#NUMANODE}].numa_hit'
+                -
+                  type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              master_item:
+                key: numa.getdata
+            -
+              name: 'Current Numa missrate node{#NUMANODE}'
+              type: CALCULATED
+              key: 'numa.hitrate.ps[{#NUMANODE}]'
+              value_type: FLOAT
+              units: '%'
+              params: '100*avg(numa.miss.ps[{#NUMANODE}],10m)/avg(numa.hit.ps[{#NUMANODE}],10m)'
+              description: 'Average over past 10 minutes'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return Math.round(value)'
+              trigger_prototypes:
+                -
+                  expression: '{last()}>{$NUMA.HIGH}'
+                  name: 'Numa node{#NUMANODE} current missrate > {$NUMA.HIGH}'
+                  opdata: '{ITEM.LASTVALUE}'
+                  priority: AVERAGE
+                -
+                  expression: '{last()}>{$NUMA.MED}'
+                  name: 'Numa node{#NUMANODE} current missrate > {$NUMA.MED}'
+                  opdata: '{ITEM.LASTVALUE}'
+                  priority: WARNING
+                  dependencies:
+                    -
+                      name: 'Numa node{#NUMANODE} current missrate > {$NUMA.HIGH}'
+                      expression: '{Template Numa:numa.hitrate.ps[{#NUMANODE}].last()}>{$NUMA.HIGH}'
+            -
+              name: 'Numa missrate node{#NUMANODE}'
+              type: CALCULATED
+              key: 'numa.hitrate[{#NUMANODE}]'
+              value_type: FLOAT
+              units: '%'
+              params: '100*last(numa.miss[{#NUMANODE}])/last(numa.hit[{#NUMANODE}])'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return Math.round(value)'
+              trigger_prototypes:
+                -
+                  expression: '{last()}>{$NUMA.HIGH}'
+                  name: 'Numa node{#NUMANODE} overall missrate > {$NUMA.HIGH}'
+                  opdata: '{ITEM.LASTVALUE}'
+                  status: DISABLED
+                  priority: AVERAGE
+                -
+                  expression: '{last()}>{$NUMA.MED}'
+                  name: 'Numa node{#NUMANODE} overall missrate > {$NUMA.MED}'
+                  opdata: '{ITEM.LASTVALUE}'
+                  status: DISABLED
+                  priority: WARNING
+                  dependencies:
+                    -
+                      name: 'Numa node{#NUMANODE} overall missrate > {$NUMA.HIGH}'
+                      expression: '{Template Numa:numa.hitrate[{#NUMANODE}].last()}>{$NUMA.HIGH}'
+            -
+              name: 'Get numa_hit node{#NUMANODE}'
+              type: DEPENDENT
+              key: 'numa.hit[{#NUMANODE}]'
+              delay: '0'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: REGEX
+                  parameters:
+                    - 'numa_hit.*'
+                    - \0
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return value.replace(/\s\s*/g,"\n")'
+                -
+                  type: CSV_TO_JSON
+                  parameters:
+                    - ''
+                    - ''
+                    - '1'
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[{#NUMANODE}].numa_hit'
+              master_item:
+                key: numa.getdata
+            -
+              name: 'Get numa_miss node{#NUMANODE} per second'
+              type: DEPENDENT
+              key: 'numa.miss.ps[{#NUMANODE}]'
+              delay: '0'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: REGEX
+                  parameters:
+                    - 'numa_miss.*'
+                    - \0
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return value.replace(/\s\s*/g,"\n")'
+                -
+                  type: CSV_TO_JSON
+                  parameters:
+                    - ''
+                    - ''
+                    - '1'
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[{#NUMANODE}].numa_miss'
+                -
+                  type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              master_item:
+                key: numa.getdata
+            -
+              name: 'Get numa_miss node{#NUMANODE}'
+              type: DEPENDENT
+              key: 'numa.miss[{#NUMANODE}]'
+              delay: '0'
+              applications:
+                -
+                  name: Numa
+              preprocessing:
+                -
+                  type: REGEX
+                  parameters:
+                    - 'numa_miss.*'
+                    - \0
+                -
+                  type: JAVASCRIPT
+                  parameters:
+                    - 'return value.replace(/\s\s*/g,"\n")'
+                -
+                  type: CSV_TO_JSON
+                  parameters:
+                    - ''
+                    - ''
+                    - '1'
+                -
+                  type: JSONPATH
+                  parameters:
+                    - '$.[{#NUMANODE}].numa_miss'
+              master_item:
+                key: numa.getdata
+          master_item:
+            key: numa.getdata
+          preprocessing:
+            -
+              type: REGEX
+              parameters:
+                - '^ *(node0 .*)'
+                - \0
+            -
+              type: JAVASCRIPT
+              parameters:
+                - |
+                  var s=value.trim().split(/\s+/);
+                  var len = s.length;
+                  var ret = "{#NUMANODE}";
+                  for ( i = 0;i < len;i++) {
+                    ret = ret + "\n";
+                    ret = ret + i;
+                  }
+                  return ret;
+                  
+                  
+            -
+              type: CSV_TO_JSON
+              parameters:
+                - ''
+                - ''
+                - '1'
+      macros:
+        -
+          macro: '{$NUMA.HIGH}'
+          value: '20'
+          description: 'Numa miss rate'
+        -
+          macro: '{$NUMA.MED}'
+          value: '10'
+          description: 'Numa miss rate'
